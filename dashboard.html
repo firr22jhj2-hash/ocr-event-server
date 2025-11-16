@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>제출 현황 대시보드</title>
+
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        primary: "#0066ff",
+        "background-light": "#f5f7f8",
+        "background-dark": "#0f1723",
+      },
+      fontFamily: {
+        "display": ["Inter", "Noto Sans KR", "sans-serif"]
+      }
+    },
+  },
+}
+</script>
+</head>
+
+<body class="font-display bg-background-light dark:bg-background-dark text-gray-800 dark:text-gray-200">
+
+<!-- MAIN WRAPPER -->
+<div class="relative flex min-h-screen w-full flex-col">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-20 w-full bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm shadow-sm">
+  <div class="container mx-auto px-4">
+    <div class="flex h-16 items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary text-2xl">diamond</span>
+        <h1 class="text-lg font-bold">제출 현황 대시보드</h1>
+      </div>
+
+      <div class="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+        </span>
+        실시간 업데이트
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="flex-grow container mx-auto p-4">
+
+<!-- SUMMARY CARDS -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+
+  <!-- 총 제출 건수 -->
+  <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+    <p class="text-gray-500 text-sm">총 제출 건수</p>
+    <p id="totalCount" class="text-3xl font-bold mt-1">0</p>
+  </div>
+
+  <!-- 오늘 제출 -->
+  <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+    <p class="text-gray-500 text-sm">오늘 제출</p>
+    <p id="todayCount" class="text-3xl font-bold mt-1">0</p>
+  </div>
+
+  <!-- 중복 제출 -->
+  <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+    <p class="text-gray-500 text-sm">중복 제출 감지</p>
+    <p id="duplicateCount" class="text-3xl font-bold text-red-500 mt-1">0</p>
+  </div>
+
+</section>
+
+<!-- TABLE SECTION -->
+<section class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+
+<!-- TOOLBAR -->
+<div class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border-b border-gray-200 dark:border-gray-700">
+  
+  <!-- SEARCH -->
+  <div class="w-full md:w-1/3">
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+      <input id="searchInput" 
+             class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 pl-10 h-10 focus:ring-primary focus:border-primary" 
+             placeholder="닉네임 검색" type="text">
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="flex w-full md:w-auto items-center gap-2">
+    <select id="filterSelect" 
+            class="rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 h-10 focus:ring-primary focus:border-primary">
+      <option value="all">전체 보기</option>
+      <option value="normal">정상</option>
+      <option value="duplicate">중복</option>
+      <option value="deleted">삭제됨</option>
+    </select>
+
+    <button onclick="loadList()" 
+            class="h-10 px-4 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+      <span class="material-symbols-outlined text-lg mr-1">refresh</span>
+      새로고침
+    </button>
+
+    <button onclick="downloadCSV()" 
+            class="h-10 px-4 rounded-lg bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 flex items-center">
+      <span class="material-symbols-outlined text-lg mr-1">download</span> CSV
+    </button>
+
+  </div>
+</div>
+
+<!-- TABLE (DESKTOP) -->
+<div class="hidden md:block overflow-x-auto">
+  <table class="min-w-full text-sm text-left">
+    <thead class="bg-gray-50 dark:bg-gray-700/50 text-gray-500 text-xs uppercase">
+      <tr>
+        <th class="px-6 py-3">닉네임</th>
+        <th class="px-6 py-3">제출 시간</th>
+        <th class="px-6 py-3">IP</th>
+        <th class="px-6 py-3">상태</th>
+        <th class="px-6 py-3 text-right">관리</th>
+      </tr>
+    </thead>
+    <tbody id="pcTableBody"></tbody>
+  </table>
+</div>
+
+<!-- MOBILE CARD LIST -->
+<div id="mobileCardList" class="md:hidden p-4 flex flex-col gap-4"></div>
+
+</section>
+</main>
+</div>
+
+<!-- DELETE MODAL -->
+<div id="deleteModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-30">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-lg">
+    <h3 class="text-lg font-bold mb-2">삭제하시겠습니까?</h3>
+    <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">이 작업은 되돌릴 수 없습니다.</p>
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal()" class="px-4 py-2 border rounded-lg">취소</button>
+      <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toastArea" class="fixed bottom-5 right-5 flex flex-col gap-2 z-40"></div>
+
+<script>
+
+// ========== TOAST ==========
+function showToast(msg) {
+  const div = document.createElement("div");
+  div.className =
+    "px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border shadow text-sm";
+  div.innerText = msg;
+  document.getElementById("toastArea").appendChild(div);
+  setTimeout(() => div.remove(), 3000);
+}
+
+// ========== LOAD LIST ==========
+function loadList() {
+  fetch("http://localhost:5000/list")
+    .then(res => res.json())
+    .then(drawData)
+    .catch(() => showToast("목록 로딩 실패"));
+}
+
+// ========== DRAW TABLE ==========
+function drawData(list) {
+  // ============================
+  list.sort((a, b) => new Date(b.time) - new Date(a.time));
+  // ---------- 통계 ----------
+  document.getElementById("totalCount").innerText = list.length;
+
+  const today = new Date().toISOString().slice(0,10);
+  const todayCount = list.filter(x => x.time.slice(0,10) === today).length;
+  document.getElementById("todayCount").innerText = todayCount;
+
+  const duplicateCount = list.filter(x => x.status === "duplicate").length;
+  document.getElementById("duplicateCount").innerText = duplicateCount;
+
+  // ---------- PC TABLE ----------
+  const pcBody = document.getElementById("pcTableBody");
+  pcBody.innerHTML = "";
+
+  list.forEach(item => {
+    const tr = document.createElement("tr");
+    tr.className = "border-b dark:border-gray-700";
+
+    const badge =
+      item.status === "duplicate"
+        ? `<span class='rounded-full px-2 py-1 text-xs bg-orange-100 text-orange-800'>중복</span>`
+        : `<span class='rounded-full px-2 py-1 text-xs bg-green-100 text-green-800'>정상</span>`;
+
+    tr.innerHTML = `
+      <td class="px-6 py-4">${item.name}</td>
+      <td class="px-6 py-4">${item.time}</td>
+      <td class="px-6 py-4">${item.ip}</td>
+      <td class="px-6 py-4">${badge}</td>
+      <td class="px-6 py-4 text-right">
+        <button onclick="openDeleteModal('${item.name}')" class="text-red-500">삭제</button>
+      </td>
+    `;
+
+    pcBody.appendChild(tr);
+  });
+
+  // ---------- MOBILE ----------
+  const mobile = document.getElementById("mobileCardList");
+  mobile.innerHTML = "";
+
+  list.forEach(item => {
+    mobile.innerHTML += `
+      <div class="rounded-lg border p-4 bg-white dark:bg-gray-800 shadow-sm">
+        <p class="text-lg font-semibold">${item.name}</p>
+        <p class="text-sm text-gray-500">${item.time}</p>
+        <p class="text-sm mt-2">IP: ${item.ip}</p>
+        <button onclick="openDeleteModal('${item.name}')" class="mt-3 text-red-500">삭제</button>
+      </div>
+    `;
+  });
+}
+
+// ========== DELETE ==========
+let deleteTarget = "";
+
+function openDeleteModal(name) {
+  deleteTarget = name;
+  const modal = document.getElementById("deleteModal");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+}
+
+function closeModal() {
+  const modal = document.getElementById("deleteModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+}
+
+document.getElementById("confirmDeleteBtn").onclick = () => {
+  fetch("http://localhost:5000/list/" + deleteTarget, { method: "DELETE" })
+    .then(() => {
+      closeModal();
+      loadList();
+      showToast("삭제 완료");
+    });
+};
+
+// ========== CSV DOWNLOAD ==========
+function downloadCSV() {
+  window.location.href = "http://localhost:5000/download";
+}
+
+// 초기 로딩
+loadList();
+
+// 5초마다 자동 새로고침
+setInterval(loadList, 5000);
+
+</script>
+</body>
+</html>

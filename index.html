@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>닉네임 OCR 제출</title>
+
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        primary: "#0066ff",
+        success: "#22c55e",
+        error: "#ef4444",
+        info: "#3b82f6",
+        "background": "#f5f7f8"
+      },
+      fontFamily: {
+        display: ["Inter", "sans-serif"]
+      }
+    }
+  }
+}
+</script>
+
+<style>
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+</style>
+
+</head>
+<body class="bg-background font-display">
+
+<!-- 전체 컨테이너 -->
+<div class="flex flex-col items-center min-h-screen p-4">
+
+  <h1 class="text-2xl font-bold mt-6">닉네임 제출</h1>
+  <p class="text-gray-600 mt-1 mb-8 text-center">교보 앱 프로필 화면 스크린샷을 업로드해주세요.</p>
+
+  <!-- 업로드 카드 -->
+  <div class="w-full max-w-md bg-white p-6 rounded-xl shadow-md">
+
+    <!-- 이미지 미리보기 -->
+    <div id="previewArea" class="hidden flex-col items-center mb-4">
+      <img id="previewImage" class="w-full h-48 object-cover rounded-lg shadow"/>
+      <button onclick="removeImage()" class="mt-2 text-sm text-red-500">이미지 삭제</button>
+    </div>
+
+    <!-- 파일 업로드 input -->
+    <input id="fileInput" type="file" accept="image/*" class="hidden" onchange="onFileSelected(event)">
+
+    <!-- 업로드 버튼 -->
+    <button 
+      onclick="document.getElementById('fileInput').click()"
+      class="w-full h-12 bg-gray-200 rounded-xl text-gray-700 font-bold flex items-center justify-center gap-2">
+      <span class="material-symbols-outlined">cloud_upload</span> 이미지 선택
+    </button>
+
+    <!-- 제출 버튼 -->
+    <button 
+      id="submitBtn"
+      onclick="submitImage()" 
+      class="w-full h-12 mt-4 bg-primary text-white font-bold rounded-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+      disabled>
+      제출하기
+    </button>
+
+  </div>
+
+  <!-- 로딩 -->
+  <div id="loading" class="hidden flex-col items-center mt-8">
+    <svg class="animate-spin h-10 w-10 text-primary" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" d="M4 12a8 8 0 018-8" fill="currentColor"></path>
+    </svg>
+    <p class="mt-3 text-gray-700 font-medium">OCR 분석 중입니다...</p>
+  </div>
+
+</div>
+
+<!-- 팝업 (모달) -->
+<div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center">
+    <div id="modalIcon" class="text-4xl mb-3"></div>
+    <p id="modalText" class="text-lg font-bold mb-4"></p>
+    <button onclick="closeModal()" class="w-full h-12 bg-primary text-white rounded-xl font-bold">확인</button>
+  </div>
+</div>
+
+<script>
+let selectedFile = null;
+
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  selectedFile = file;
+
+  // 미리보기
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    document.getElementById("previewImage").src = event.target.result;
+    document.getElementById("previewArea").classList.remove("hidden");
+  };
+  reader.readAsDataURL(file);
+
+  document.getElementById("submitBtn").disabled = false;
+}
+
+function removeImage() {
+  selectedFile = null;
+  document.getElementById("fileInput").value = "";
+  document.getElementById("previewArea").classList.add("hidden");
+  document.getElementById("submitBtn").disabled = true;
+}
+
+function submitImage() {
+  if (!selectedFile) return;
+
+  document.getElementById("loading").classList.remove("hidden");
+
+  const formData = new FormData();
+  formData.append("image", selectedFile);
+
+  fetch("http://localhost:5000/upload", {
+    method: "POST",
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById("loading").classList.add("hidden");
+
+    if (data.status === "ok") {
+      showModal("✅", `${data.nickname} 고객님, 제출이 완료되었습니다!`);
+    }
+    else if (data.status === "duplicate") {
+      showModal("ℹ️", "이미 제출된 닉네임입니다.");
+    }
+    else {
+      showModal("❌", "닉네임을 찾을 수 없습니다. 다시 업로드해주세요.");
+    }
+  })
+  .catch(err => {
+    document.getElementById("loading").classList.add("hidden");
+    showModal("❌", "서버 오류가 발생했습니다.");
+  });
+}
+
+function showModal(icon, text) {
+  document.getElementById("modalIcon").innerHTML = icon;
+  document.getElementById("modalText").innerText = text;
+  document.getElementById("modal").classList.remove("hidden");
+  document.getElementById("modal").classList.add("flex");
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.add("hidden");
+  document.getElementById("modal").classList.remove("flex");
+}
+</script>
+
+</body>
+</html>
