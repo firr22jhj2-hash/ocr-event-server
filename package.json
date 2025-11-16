@@ -14,6 +14,7 @@
     "@google-cloud/vision": "^5.3.4",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "moment": "^2.30.1",
     "multer": "^2.0.2"
   }
 }
